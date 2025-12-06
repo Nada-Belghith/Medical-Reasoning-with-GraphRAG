@@ -50,6 +50,7 @@ Final Answer:
         verbose=True,
         cypher_prompt=cypher_generation_prompt,
         qa_prompt=qa_generation_prompt,
+        return_intermediate_steps=True,
         allow_dangerous_requests=True
     )
     return qa_chain
@@ -70,54 +71,105 @@ def ask_graphrag_with_path_advanced(qa_chain, question: str):
     - la réponse textuelle générée
     - le chemin complet parcouru dans le graphe avec profondeur et score
     """
-    response = qa_chain.invoke({"query": question})
-
-    # Extraire le vrai résultat du Cypher (liste de dicts)
-    raw_result = response.get("raw_query_result")  # ou "data" selon ta version
-    if raw_result is None:
-        raw_result = []
-
-    graph_path = []
+    import re
     
-    # On va simuler un score et profondeur pour chaque lien
-    for row in raw_result:
-        disease_name = row.get("Disease") or row.get("d.name") or "Unknown Disease"
-
-        # Profondeur 1 = directement lié à la maladie
-        depth = 1  
-
-        if "Symptom" in row or "s.name" in row:
-            symptom_name = row.get("Symptom") or row.get("s.name")
+    try:
+        # Invoke la chaîne avec return_intermediate_steps=True
+        response = qa_chain.invoke({"query": question})
+        
+        # Récupérer la réponse finale pour l'utilisateur
+        final_answer = response.get("result", "⚠️ Pas de réponse générée.")
+        
+        # Récupérer les étapes intermédiaires
+        intermediate_steps = response.get("intermediate_steps", [])
+        
+        graph_path = []
+        disease_name = "Unknown Disease"
+        
+        # Traiter chaque étape intermédiaire
+        for step in intermediate_steps:
+            # Chercher la requête générée pour extraire le nom de la maladie
+            if "query" in step:
+                query_text = str(step.get("query", ""))
+                # Pattern pour extraire le nom de la maladie du Cypher
+                # Cherche: {name: "..." } ou = "..."
+                matches = re.findall(r'(?:name:\s*"([^"]+)"|=\s*"([^"]+)")', query_text)
+                if matches:
+                    # Prendre le premier match qui n'est pas vide
+                    for match_tuple in matches:
+                        potential_name = match_tuple[0] or match_tuple[1]
+                        if potential_name:
+                            disease_name = potential_name
+                            break
+            
+            # C'est le résultat de la requête Cypher
+            if "context" in step:
+                context_data = step.get("context", [])
+                
+                for row in context_data:
+                    # Essayer différentes clés possibles
+                    row_disease = (
+                        row.get("Disease") or 
+                        row.get("d.name") or 
+                        row.get("d") or 
+                        disease_name
+                    )
+                    if row_disease and row_disease != "Unknown Disease":
+                        disease_name = row_disease
+                    
+                    # Vérifier pour les symptômes
+                    symptom_keys = ["Symptom", "SymptomName", "s.name", "symptom_name"]
+                    symptom_name = next((row.get(k) for k in symptom_keys if k in row), None)
+                    if symptom_name:
+                        graph_path.append({
+                            "node": f"Disease: {disease_name}",
+                            "relation": "has_symptom",
+                            "next_node": f"Symptom: {symptom_name}",
+                            "depth": 1,
+                            "score": 0.95
+                        })
+                    
+                    # Vérifier pour les traitements
+                    treatment_keys = ["Treatment", "t.name", "treatment_name"]
+                    treatment_name = next((row.get(k) for k in treatment_keys if k in row), None)
+                    if treatment_name:
+                        graph_path.append({
+                            "node": f"Disease: {disease_name}",
+                            "relation": "treated_with",
+                            "next_node": f"Treatment: {treatment_name}",
+                            "depth": 1,
+                            "score": 0.95
+                        })
+                    
+                    # Vérifier pour les causes
+                    cause_keys = ["Cause", "cause_name", "c.name"]
+                    cause_name = next((row.get(k) for k in cause_keys if k in row), None)
+                    if cause_name:
+                        graph_path.append({
+                            "node": f"Disease: {disease_name}",
+                            "relation": "caused_by",
+                            "next_node": f"Cause: {cause_name}",
+                            "depth": 1,
+                            "score": 0.95
+                        })
+        
+        # Si pas de données extraites, afficher le message par défaut
+        if not graph_path:
             graph_path.append({
-                "node": f"Disease: {disease_name}",
-                "relation": "has_symptom",
-                "next_node": f"Symptom: {symptom_name}",
-                "depth": depth,
-                "score": 1.0  # Tu peux remplacer par un score de similarité réel
+                "node": "Query Executed",
+                "relation": "---",
+                "next_node": "No intermediate paths found",
+                "depth": 0,
+                "score": 0.0
             })
-        if "Treatment" in row or "t.name" in row:
-            treatment_name = row.get("Treatment") or row.get("t.name")
-            graph_path.append({
-                "node": f"Disease: {disease_name}",
-                "relation": "treated_with",
-                "next_node": f"Treatment: {treatment_name}",
-                "depth": depth,
-                "score": 1.0
-            })
-        if "Cause" in row or "c.name" in row:
-            cause_name = row.get("Cause") or row.get("c.name")
-            graph_path.append({
-                "node": f"Disease: {disease_name}",
-                "relation": "caused_by",
-                "next_node": f"Cause: {cause_name}",
-                "depth": depth,
-                "score": 1.0
-            })
-
-    # Réponse finale générée pour l'utilisateur
-    final_answer = response.get("result", "⚠️ Pas de réponse générée.")
-
-    return {
-        "answer": final_answer,
-        "graph_path": graph_path
+        
+        return {
+            "answer": final_answer,
+            "graph_path": graph_path
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "answer": f"❌ Erreur lors du traitement : {e}",
+            "graph_path": [{"node": "Error", "relation": "---", "next_node": str(traceback.format_exc()), "depth": 0, "score": 0.0}]
     }

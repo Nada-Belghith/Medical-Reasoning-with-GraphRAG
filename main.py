@@ -40,20 +40,18 @@ def run_agent():
     print("\n🤖 Agent GraphRAG Médical (Llama3 + Neo4j) prêt !")
     print("📌 Tapez 'exit' pour quitter.\n")
 
-    # Questions de test # test_questions = [ # "Quels sont les symptômes de la maladie Diabète de type 2 ?", # "Quels sont les traitements pour l'Asthme ?", # "Quelles sont les causes de l'Hypertension ?", # ] # for tq in test_questions: # print(f"Question Test > {tq}") # print(ask_graphrag(qa_chain, tq))
-    
     # Exemple avec chemin (graph path)
     question = "Quels sont les symptômes de la maladie Diabète de type 2 ?"
-    result_with_path = ask_graphrag_with_path_advanced(qa_chain, question)  # On passe qa_chain
+    result_with_path = ask_graphrag_with_path_advanced(qa_chain, question)
 
-    print("Réponse RAG:", result_with_path["answer"])
-    print("Chemin parcouru (Graph Path):")
+    print("\n📋 Réponse RAG:", result_with_path["answer"])
+    print("\n🔗 Chemin parcouru (Graph Path):")
     for step in result_with_path["graph_path"]:
-        print(step)
+        print(f"  {step['node']} --[{step['relation']}]--> {step['next_node']} (score: {step['score']:.2f}, depth: {step['depth']})")
 
     # Boucle interactive
     while True:
-        q = input("Question > ")
+        q = input("\nQuestion > ")
         if q.lower() == "exit":
             break
         print(ask_graphrag(qa_chain, q))  # Version classique pour les questions rapides
