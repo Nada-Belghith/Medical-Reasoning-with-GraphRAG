@@ -1,0 +1,73 @@
+[
+  {
+    "maladie": "Diabète de type 2",
+    "symptomes": [
+      "fatigue",
+      "soif excessive",
+      "vision floue",
+      "faim excessive"
+    ],
+    "traitements": [
+      "Metformine",
+      "Insuline",
+      "Régime alimentaire"
+    ],
+    "causes": [
+      "obésité",
+      "manque exercice",
+      "génétique"
+    ]
+  },
+  {
+    "maladie": "Hypertension",
+    "symptomes": [
+      "maux de tête",
+      "étourdissement",
+      "vision trouble"
+    ],
+    "traitements": [
+      "Ramipril",
+      "Diurétiques",
+      "Réduction du sel"
+    ],
+    "causes": [
+      "stress",
+      "alimentation riche en sel",
+      "hérédité"
+    ]
+  },
+  {
+    "maladie": "Asthme",
+    "symptomes": [
+      "toux",
+      "respiration sifflante",
+      "essoufflement"
+    ],
+    "traitements": [
+      "Ventoline",
+      "Corticoïdes inhalés"
+    ],
+    "causes": [
+      "allergènes",
+      "pollution",
+      "exercice intense"
+    ]
+  },
+  {
+    "maladie": "Anémie ferriprive",
+    "symptomes": [
+      "fatigue",
+      "peau pâle",
+      "vertiges"
+    ],
+    "traitements": [
+      "Comprimés de fer",
+      "régime riche en fer"
+    ],
+    "causes": [
+      "carence en fer",
+      "pertes menstruelles",
+      "alimentation pauvre"
+    ]
+  }
+]
